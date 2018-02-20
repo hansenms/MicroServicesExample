@@ -20,14 +20,26 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using aggregator.Models;
+using MicroLib;
+using Microsoft.Extensions.Logging;
 
 namespace aggregator.Controllers
-{ 
+{
+
+
     /// <summary>
     /// 
     /// </summary>
     public class DefaultApiController : Controller
-    { 
+    {
+        private readonly IStore store;
+        private readonly ILogger logger;
+
+        public DefaultApiController(IStore store, ILogger<DefaultApiController> logger)
+        {
+            this.store = store;
+            this.logger = logger;
+        }
 
         /// <summary>
         /// Add data generated from a device to the aggregator
@@ -44,7 +56,7 @@ namespace aggregator.Controllers
         [Route("/v1/deviceData/{deviceType}/{deviceId}")]
         [SwaggerOperation("AddDeviceData")]
         public virtual void AddDeviceData([FromRoute]string deviceType, [FromRoute]string deviceId, [FromQuery]string dataPointId, [FromQuery]float? value)
-        { 
+        {
             throw new NotImplementedException();
         }
 
@@ -64,9 +76,9 @@ namespace aggregator.Controllers
         [SwaggerOperation("AverageByDeviceTypeDeviceTypeGet")]
         [SwaggerResponse(200, type: typeof(DeviceDataPoints))]
         public virtual IActionResult AverageByDeviceTypeDeviceTypeGet([FromRoute]string deviceType, [FromQuery]DateTime? fromTime, [FromQuery]DateTime? toTime)
-        { 
+        {
             string exampleJson = null;
-            
+
             var example = exampleJson != null
             ? JsonConvert.DeserializeObject<DeviceDataPoints>(exampleJson)
             : default(DeviceDataPoints);

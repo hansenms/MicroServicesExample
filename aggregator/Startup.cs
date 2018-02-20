@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MicroLib;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -32,10 +33,12 @@ namespace aggregator
                         opts.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                     });
 
-                services.AddSwaggerGen(c =>
-                {
-                    c.SwaggerDoc("v1", new Info { Title = "API V1", Version = "v1" });
-                });
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Info { Title = "API V1", Version = "v1" });
+            });
+
+            services.AddSingleton<IStore>(new Store());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -21,6 +21,7 @@ namespace aggregator
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
                 .UseKestrel()
+                .UseUrls("http://+:5000")
                 .Build();
     }
 }

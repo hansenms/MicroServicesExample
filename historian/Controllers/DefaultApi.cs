@@ -54,15 +54,26 @@ namespace historian.Controllers
         [HttpPost]
         [Route("/v1/deviceData/{deviceId}")]
         [SwaggerOperation("AddDeviceData")]
-        [SwaggerResponse(200, type: typeof(float?))]
+        [SwaggerResponse(201, type: typeof(float?))]
         public virtual IActionResult AddDeviceData([FromRoute]string deviceId, [FromQuery]string datapointId, [FromQuery]DateTime? timestamp, [FromQuery]float? value)
         { 
-            string exampleJson = null;
-            
-            var example = exampleJson != null
-            ? JsonConvert.DeserializeObject<float?>(exampleJson)
-            : default(float?);
-            return new ObjectResult(example);
+            var key = $"{deviceId};{datapointId}";
+
+            if (!this.store.Exists(key) && value.HasValue)
+            {
+                this.store.Add(key, value.Value);
+                this.logger.LogInformation($"Added {value.Value} for {key} to the store at {timestamp}.");
+            }
+
+            if (!value.HasValue){
+                this.logger.LogError($"No value found for {key}.");
+                return BadRequest($"No data value for device: {deviceId} and datapoint {datapointId}");
+            }
+
+            var average = this.store.GetAll().Where( i => i.Key.StartsWith(deviceId)).Average( v => v.Value);
+
+            this.logger.LogInformation($"Returning {average}.");
+            return Created("", average);
         }
     }
 }

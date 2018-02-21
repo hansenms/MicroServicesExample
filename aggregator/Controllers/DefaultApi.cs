@@ -22,6 +22,9 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using aggregator.Models;
 using MicroLib;
 using Microsoft.Extensions.Logging;
+using ServiceClients;
+using Microsoft.Rest;
+using Polly;
 
 namespace aggregator.Controllers
 {
@@ -34,11 +37,14 @@ namespace aggregator.Controllers
     {
         private readonly IStore store;
         private readonly ILogger logger;
+        private readonly IHistorian historian;
 
-        public DefaultApiController(IStore store, ILogger<DefaultApiController> logger)
+
+        public DefaultApiController(IStore store, ILogger<DefaultApiController> logger, IHistorian historian)
         {
             this.store = store;
             this.logger = logger;
+            this.historian = historian;
         }
 
         /// <summary>
@@ -55,9 +61,45 @@ namespace aggregator.Controllers
         [HttpPost]
         [Route("/v1/deviceData/{deviceType}/{deviceId}")]
         [SwaggerOperation("AddDeviceData")]
-        public virtual void AddDeviceData([FromRoute]string deviceType, [FromRoute]string deviceId, [FromQuery]string dataPointId, [FromQuery]float? value)
+        public virtual IActionResult AddDeviceData([FromRoute]string deviceType, [FromRoute]string deviceId, [FromQuery]string dataPointId, [FromQuery]float? value)
         {
-            throw new NotImplementedException();
+            if (!deviceType.Equals("TEMP"))
+         {
+             this.logger.LogError($"Device type {deviceType} is not supported.");
+             return BadRequest($"Unsupported device type {deviceType}");
+         }
+         float? averageValue = default(float?);
+
+         var retryPolicy = Policy
+             .Handle<HttpOperationException>()
+             .WaitAndRetry(5, retryAttempt =>
+                 TimeSpan.FromSeconds(Math.Pow(2, retryAttempt))
+             );
+
+         averageValue = retryPolicy.Execute(() =>
+            (float?)this.historian.AddDeviceData(deviceId, dataPointId, 
+                                                 DateTimeOffset.UtcNow.DateTime, value));
+
+         if (!averageValue.HasValue)
+         {
+             var message = $"Cannot calculate the average.";
+             this.logger.LogError(message);
+             return BadRequest(message);
+         }
+
+         var key = $"{deviceType};{deviceId}";
+         if (this.store.Exists(key))
+         {
+             this.logger.LogInformation($"Updating {key} with {averageValue.Value}");
+             this.store.Update(key, averageValue.Value);
+         }
+         else
+         {
+             this.logger.LogInformation($"Added {key} with {averageValue.Value}");
+             this.store.Add(key, averageValue.Value);
+         }
+
+         return Ok(averageValue.Value);
         }
 
 

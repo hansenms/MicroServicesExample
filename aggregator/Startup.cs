@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Serialization;
 using Swashbuckle.AspNetCore.Swagger;
+using ServiceClients;
 
 namespace aggregator
 {
@@ -39,7 +40,11 @@ namespace aggregator
             });
 
             services.AddSingleton<IStore>(new Store());
-        }
+
+            // Add the historian client
+            services.AddTransient<IHistorian>( 
+                    (s) => new Historian(new Uri(Configuration["TEMPHISTORIAN"])));
+            }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
